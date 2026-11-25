@@ -1492,3 +1492,249 @@ button.nav-link {
   color: var(--foreground);
   box-shadow: 0 1px 3px rgb(15 23 42 / 0.1);
 }
+
+/* Quilometragem do veículo ativo */
+.sidebar-vehicle {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 6px;
+  align-items: center;
+  padding: 1rem 1rem;
+}
+.sidebar-vehicle > .sidebar-vehicle-caption {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.sidebar-vehicle > .sidebar-vehicle-name {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  color: #b0b8c5;
+  font-size: 13px;
+  font-weight: 500;
+}
+.sidebar-vehicle > .sidebar-vehicle-meta {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+.sidebar-odometer {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+}
+.sidebar-odometer > .sidebar-vehicle-caption {
+  display: none;
+}
+.sidebar-odometer-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.sidebar-odometer-row strong {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.odometer-edit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+}
+.odometer-edit-button:hover {
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+}
+.odometer-edit-button svg {
+  width: 12px;
+  height: 12px;
+}
+.odometer-form {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 12px;
+  width: min(200px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  z-index: 100;
+}
+.drawer-panel .odometer-form {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+.odometer-form[hidden] { display: none; }
+.odometer-form .input { width: 100%; min-width: 0; }
+.odometer-form .btn { width: 100%; }
+.odometer-cancel {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.odometer-cancel:hover { color: #fff; }
+.odometer-error {
+  font-size: 12px;
+  color: #fca5a5;
+  overflow-wrap: anywhere;
+}
+.sidebar-vehicle {
+  position: relative;
+}
+
+.sidebar-odometer {
+  position: absolute;
+  top: 44px;
+  right: 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.sidebar-odometer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.sidebar-odometer-row strong {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.odometer-edit-button {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+}
+
+.odometer-form {
+  position: absolute;
+  bottom: 30px;
+  right: 0;
+  width: 190px;
+  padding: 12px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  z-index: 100;
+}
+/* Correção do posicionamento da quilometragem */
+
+.sidebar-vehicle {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 2px;
+}
+
+.sidebar-vehicle > .sidebar-vehicle-caption {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.sidebar-vehicle-name {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 13px;
+  font-weight: 500;
+  color: #b0b8c5;
+}
+
+.sidebar-vehicle-meta {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.sidebar-odometer {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.sidebar-odometer > .sidebar-vehicle-caption {
+  display: none;
+}
+
+.sidebar-odometer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.sidebar-odometer-row strong {
+  font-size: 11px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.odometer-edit-button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+/* Janela de edição compacta */
+
+.sidebar-odometer .odometer-form {
+  position: absolute;
+  top: auto;
+  bottom: calc(100% + 12px);
+  right: 0;
+  left: auto;
+  width: 140px;
+  padding: 8px;
+  margin: 0;
+  gap: 5px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  z-index: 100;
+}
+
+.sidebar-odometer .odometer-form .input {
+  height: 26px;
+  font-size: 11px;
+  padding: 0 6px;
+}
+
+.sidebar-odometer .odometer-form .btn {
+  height: 24px;
+  font-size: 11px;
+  padding: 0 4px;
+  box-shadow: none;
+}
+
+.sidebar-odometer .odometer-cancel {
+  font-size: 11px;
+  padding: 2px;
+}

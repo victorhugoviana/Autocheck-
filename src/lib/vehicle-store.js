@@ -1,7 +1,14 @@
-import { getVehicles } from './app-data.js';
+
+import {
+  getVehicles,
+  onVehicleDataChange,
+} from './app-data.js';
 
 const STORAGE_KEY = 'autocheck:selected-vehicle';
+
 const listeners = new Set();
+
+let selectedId = null;
 
 function readStoredId() {
   try {
@@ -13,20 +20,51 @@ function readStoredId() {
 
 export function getSelectedVehicle() {
   const vehicles = getVehicles();
-  const storedId = readStoredId();
-  return vehicles.find((v) => v.id === storedId) ?? vehicles[0];
+
+  const storedId = selectedId ?? readStoredId();
+
+  return vehicles.find(
+    (v) => String(v.id) === String(storedId)
+  ) ?? vehicles[0];
+}
+
+function notifyListeners() {
+  const vehicle = getSelectedVehicle();
+
+  if (!vehicle) return;
+
+  listeners.forEach((fn) => {
+    try {
+      fn(vehicle);
+    } catch (error) {
+      console.error(error);
+    }
+  });
 }
 
 export function setSelectedVehicleId(id) {
+  selectedId = String(id);
+
   try {
-    localStorage.setItem(STORAGE_KEY, id);
+    localStorage.setItem(
+      STORAGE_KEY,
+      selectedId
+    );
   } catch {
-    // Storage indisponível: a seleção continua válida nesta página.
+    // Mantém a seleção na memória.
   }
-  listeners.forEach((fn) => fn(getSelectedVehicle()));
+
+  notifyListeners();
 }
 
 export function onVehicleChange(fn) {
   listeners.add(fn);
+
   return () => listeners.delete(fn);
 }
+
+// Atualiza a interface quando os dados mudarem.
+
+onVehicleDataChange(() => {
+  notifyListeners();
+});

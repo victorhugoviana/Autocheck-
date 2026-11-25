@@ -1,3 +1,4 @@
+
 import { icon } from './icons.js';
 import { escapeHtml } from './ui.js';
 
@@ -7,12 +8,21 @@ import {
   onVehicleChange,
 } from './vehicle-store.js';
 
-import { getVehicles, loadAppData } from './app-data.js';
+import {
+  getVehicles,
+  loadAppData,
+  updateVehicleOdometer,
+} from './app-data.js';
+
 import { requireUser, signOut } from './auth.js';
 import { openVehicleDialog } from './vehicle-form.js';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', iconName: 'dashboard' },
+  {
+    href: '/',
+    label: 'Dashboard',
+    iconName: 'dashboard',
+  },
   {
     href: '/refueling.html',
     label: 'Abastecimentos',
@@ -23,12 +33,32 @@ const NAV_ITEMS = [
     label: 'Manutenção',
     iconName: 'wrench',
   },
- 
 ];
 
-const stripIndex = (path) => path.replace(/index\.html$/, '');
+const stripIndex = (path) =>
+  path.replace(/index\.html$/, '');
 
 let unsubscribeVehicle = null;
+
+const EDIT_ICON = `
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M12 20h9"/>
+    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/>
+  </svg>
+`;
+
+function formatOdometer(value) {
+  return `${Number(value).toLocaleString('pt-BR')} km`;
+}
 
 function vehicleOptionsHtml() {
   const selectedId = getSelectedVehicle()?.id;
@@ -66,10 +96,15 @@ function vehicleSelectorHtml() {
         width:100%;
       "
     >
-      <label class="vehicle-selector" style="min-width:0;">
+
+      <label class="vehicle-selector"
+        style="min-width:0;">
+
         ${icon('car', 'vehicle-selector-icon')}
 
-        <span class="vehicle-selector-label">Veículo:</span>
+        <span class="vehicle-selector-label">
+          Veículo:
+        </span>
 
         <select
           class="vehicle-select"
@@ -79,6 +114,7 @@ function vehicleSelectorHtml() {
         >
           ${vehicleOptionsHtml()}
         </select>
+
       </label>
 
       <button
@@ -88,6 +124,7 @@ function vehicleSelectorHtml() {
       >
         + Adicionar veículo
       </button>
+
     </div>
   `;
 }
@@ -126,7 +163,9 @@ function logoutButtonHtml(extraClass = '') {
 
 function sidebarVehicleHtml(vehicle) {
   return `
-    <p class="sidebar-vehicle-caption">Veículo ativo</p>
+    <p class="sidebar-vehicle-caption">
+      Veículo ativo
+    </p>
 
     <p class="sidebar-vehicle-name" data-sidebar-name>
       ${escapeHtml(`${vehicle.make} ${vehicle.model}`)}
@@ -134,9 +173,76 @@ function sidebarVehicleHtml(vehicle) {
 
     <p class="sidebar-vehicle-meta" data-sidebar-meta>
       ${escapeHtml(
-        [vehicle.year, vehicle.engine].filter(Boolean).join(' · ')
+        [vehicle.year, vehicle.engine]
+          .filter(Boolean)
+          .join(' · ')
       )}
     </p>
+
+    <div class="sidebar-odometer">
+
+      <p class="sidebar-vehicle-caption">
+        Quilometragem atual
+      </p>
+
+      <div class="sidebar-odometer-row">
+
+        <strong data-sidebar-odometer>
+          ${formatOdometer(vehicle.currentOdometer)}
+        </strong>
+
+        <button
+          class="odometer-edit-button"
+          type="button"
+          data-edit-odometer
+          title="Atualizar quilometragem"
+          aria-label="Atualizar quilometragem"
+        >
+          ${EDIT_ICON}
+        </button>
+
+      </div>
+
+      <form
+        class="odometer-form"
+        data-odometer-form
+        hidden
+      >
+
+        <input
+          class="input"
+          type="number"
+          name="odometer"
+          aria-label="Nova quilometragem"
+          min="${Number(vehicle.currentOdometer)}"
+          step="1"
+          required
+        />
+
+        <button
+          class="btn btn-primary btn-sm"
+          type="submit"
+        >
+          Atualizar km
+        </button>
+
+        <button
+          class="odometer-cancel"
+          type="button"
+          data-cancel-odometer
+        >
+          Cancelar
+        </button>
+
+        <p
+          class="odometer-error"
+          data-odometer-error
+          hidden
+        ></p>
+
+      </form>
+
+    </div>
   `;
 }
 
@@ -166,6 +272,7 @@ export async function openAppShell(onReady) {
 
       setSelectedVehicleId(vehicle.id);
     }
+
   } catch (error) {
     console.error(error);
 
@@ -188,11 +295,21 @@ export function mountShell() {
   const app = document.getElementById('app');
   const vehicle = getSelectedVehicle();
 
+  let odometerBusy = false;
+
   app.innerHTML = `
     <aside class="sidebar">
+
       <div class="brand">
-        <div class="brand-mark">${icon('car')}</div>
-        <span class="brand-name">AutoCheck</span>
+
+        <div class="brand-mark">
+          ${icon('car')}
+        </div>
+
+        <span class="brand-name">
+          AutoCheck
+        </span>
+
       </div>
 
       <nav class="sidebar-nav">
@@ -203,15 +320,23 @@ export function mountShell() {
       <div class="sidebar-vehicle">
         ${sidebarVehicleHtml(vehicle)}
       </div>
+
     </aside>
 
     <div class="workspace">
+
       <header class="mobile-header">
+
         <div class="brand">
+
           <div class="brand-mark brand-mark-sm">
             ${icon('car')}
           </div>
-          <span class="brand-name">AutoCheck</span>
+
+          <span class="brand-name">
+            AutoCheck
+          </span>
+
         </div>
 
         <button
@@ -222,16 +347,30 @@ export function mountShell() {
         >
           ${icon('menu')}
         </button>
+
       </header>
 
       <div class="drawer" data-drawer hidden>
-        <div class="drawer-backdrop" data-drawer-close></div>
+
+        <div
+          class="drawer-backdrop"
+          data-drawer-close
+        ></div>
 
         <aside class="drawer-panel">
+
           <div class="drawer-head">
+
             <div class="brand">
-              <div class="brand-mark">${icon('car')}</div>
-              <span class="brand-name">AutoCheck</span>
+
+              <div class="brand-mark">
+                ${icon('car')}
+              </div>
+
+              <span class="brand-name">
+                AutoCheck
+              </span>
+
             </div>
 
             <button
@@ -242,45 +381,123 @@ export function mountShell() {
             >
               ${icon('x')}
             </button>
+
           </div>
 
           <nav class="sidebar-nav">
             ${navHtml('nav-link-drawer')}
             ${logoutButtonHtml('nav-link-drawer')}
           </nav>
+
+          <div class="sidebar-vehicle">
+            ${sidebarVehicleHtml(vehicle)}
+          </div>
+
         </aside>
+
       </div>
 
-      <div class="topbar">${vehicleSelectorHtml()}</div>
-      <div class="mobile-vehicle">${vehicleSelectorHtml()}</div>
+      <div class="topbar">
+        ${vehicleSelectorHtml()}
+      </div>
+
+      <div class="mobile-vehicle">
+        ${vehicleSelectorHtml()}
+      </div>
 
       <main class="content" id="page"></main>
+
     </div>
   `;
 
   const drawer = app.querySelector('[data-drawer]');
 
-  app.querySelector('[data-drawer-open]').addEventListener('click', () => {
-    drawer.hidden = false;
-  });
-
-  app.querySelectorAll('[data-drawer-close]').forEach((element) => {
-    element.addEventListener('click', () => {
-      drawer.hidden = true;
+  app.querySelector('[data-drawer-open]')
+    .addEventListener('click', () => {
+      drawer.hidden = false;
     });
-  });
 
-  app.querySelectorAll('[data-vehicle-select]').forEach((select) => {
-    select.addEventListener('change', (event) => {
-      setSelectedVehicleId(event.target.value);
+  app.querySelectorAll('[data-drawer-close]')
+    .forEach((element) => {
+      element.addEventListener('click', () => {
+        drawer.hidden = true;
+      });
     });
-  });
+
+  app.querySelectorAll('[data-vehicle-select]')
+    .forEach((select) => {
+      select.addEventListener('change', (event) => {
+        setSelectedVehicleId(event.target.value);
+      });
+    });
 
   app.onclick = async (event) => {
-    if (event.target.closest('[data-logout]')) {
-      signOut();
+
+    // Abrir edição da quilometragem.
+
+    const editOdometer = event.target.closest(
+      '[data-edit-odometer]'
+    );
+
+    if (editOdometer) {
+      if (odometerBusy) return;
+
+      const current = getSelectedVehicle();
+
+      const form = editOdometer
+        .closest('.sidebar-odometer')
+        .querySelector('[data-odometer-form]');
+
+      const shouldOpen = form.hidden;
+
+      app.querySelectorAll('[data-odometer-form]')
+        .forEach((item) => {
+          item.hidden = true;
+        });
+
+      form.dataset.vehicleId = String(current.id);
+
+      form.elements.odometer.value =
+        current.currentOdometer;
+
+      form.elements.odometer.min =
+        current.currentOdometer;
+
+      form.querySelector(
+        '[data-odometer-error]'
+      ).hidden = true;
+
+      form.hidden = !shouldOpen;
+
+      if (shouldOpen) {
+        form.elements.odometer.focus();
+      }
+
       return;
     }
+
+    // Cancelar edição.
+
+    const cancelOdometer = event.target.closest(
+      '[data-cancel-odometer]'
+    );
+
+    if (cancelOdometer) {
+      if (odometerBusy) return;
+
+      cancelOdometer.closest('form').hidden = true;
+
+      return;
+    }
+
+    // Sair da conta.
+
+    if (event.target.closest('[data-logout]')) {
+      await signOut();
+      return;
+    }
+
+    // Adicionar veículo.
 
     if (event.target.closest('[data-add-vehicle]')) {
       const added = await openVehicleDialog();
@@ -291,31 +508,122 @@ export function mountShell() {
     }
   };
 
-  if (unsubscribeVehicle) unsubscribeVehicle();
+  // Salvar quilometragem.
 
-  unsubscribeVehicle = onVehicleChange(syncVehicleUi);
+  app.onsubmit = async (event) => {
+    const form = event.target;
+
+    if (!form.matches('[data-odometer-form]')) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (odometerBusy) return;
+
+    const current = getSelectedVehicle();
+
+    if (
+      String(current.id) !== form.dataset.vehicleId
+    ) {
+      form.hidden = true;
+      return;
+    }
+
+    const submit = form.querySelector(
+      '[type="submit"]'
+    );
+
+    const errorEl = form.querySelector(
+      '[data-odometer-error]'
+    );
+
+    const value = form.elements.odometer.value;
+
+    odometerBusy = true;
+    submit.disabled = true;
+    submit.textContent = 'Salvando...';
+    errorEl.hidden = true;
+
+    try {
+      await updateVehicleOdometer(
+        current.id,
+        value
+      );
+
+      form.hidden = true;
+
+    } catch (error) {
+      console.error(error);
+
+      errorEl.textContent =
+        error.message || 'Erro ao atualizar km.';
+
+      errorEl.hidden = false;
+
+    } finally {
+      odometerBusy = false;
+      submit.disabled = false;
+      submit.textContent = 'Atualizar km';
+    }
+  };
+
+  if (unsubscribeVehicle) {
+    unsubscribeVehicle();
+  }
+
+  unsubscribeVehicle = onVehicleChange(
+    syncVehicleUi
+  );
 
   return app.querySelector('#page');
 }
 
+// Sincroniza as informações do veículo.
+
 function syncVehicleUi(vehicle) {
   if (!vehicle) return;
 
-  document.querySelectorAll('[data-vehicle-select]').forEach((select) => {
+  document.querySelectorAll(
+    '[data-vehicle-select]'
+  ).forEach((select) => {
     select.innerHTML = vehicleOptionsHtml();
     select.value = vehicle.id;
   });
 
-  const name = document.querySelector('[data-sidebar-name]');
-  const meta = document.querySelector('[data-sidebar-meta]');
+  document.querySelectorAll(
+    '[data-sidebar-name]'
+  ).forEach((name) => {
+    name.textContent =
+      `${vehicle.make} ${vehicle.model}`;
+  });
 
-  if (name) {
-    name.textContent = `${vehicle.make} ${vehicle.model}`;
-  }
+  document.querySelectorAll(
+    '[data-sidebar-meta]'
+  ).forEach((meta) => {
+    meta.textContent = [
+      vehicle.year,
+      vehicle.engine,
+    ].filter(Boolean).join(' · ');
+  });
 
-  if (meta) {
-    meta.textContent = [vehicle.year, vehicle.engine]
-      .filter(Boolean)
-      .join(' · ');
-  }
+  document.querySelectorAll(
+    '[data-sidebar-odometer]'
+  ).forEach((element) => {
+    element.textContent = formatOdometer(
+      vehicle.currentOdometer
+    );
+  });
+
+  document.querySelectorAll(
+    '[data-odometer-form]'
+  ).forEach((form) => {
+    form.elements.odometer.value =
+      vehicle.currentOdometer;
+
+    form.elements.odometer.min =
+      vehicle.currentOdometer;
+
+    form.hidden = true;
+  });
 }

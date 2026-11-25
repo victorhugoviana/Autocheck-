@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase.js';
 
 let data = {
@@ -6,6 +7,8 @@ let data = {
   maintenanceRecords: [],
   wearItems: [],
 };
+
+const vehicleDataListeners = new Set();
 
 const fromVehicle = (row) => ({
   id: row.id,
@@ -22,7 +25,7 @@ const fromRefueling = (row) => ({
   id: row.id,
   vehicleId: row.vehicle_id,
   date: row.date,
-  odometer: row.odometer,
+  odometer: Number(row.odometer),
   liters: Number(row.liters),
   totalAmount: Number(row.total_amount),
   fuelType: row.fuel_type,
@@ -36,7 +39,7 @@ const fromMaintenance = (row) => ({
   partName: row.part_name,
   partCost: Number(row.part_cost),
   laborCost: Number(row.labor_cost),
-  odometer: row.odometer,
+  odometer: Number(row.odometer),
   category: row.category,
 });
 
@@ -80,8 +83,6 @@ async function fetchAppData() {
   };
 }
 
-// Carrega os registros existentes.
-// Não cria veículos ou históricos de exemplo.
 export async function loadAppData() {
   data = await fetchAppData();
 }
@@ -95,7 +96,87 @@ export const getMaintenanceRecords = () =>
 
 export const getWearItems = () => data.wearItems;
 
-// Cadastro de veículo manual ou selecionado no catálogo.
+// Sincronização dos veículos.
+
+export function onVehicleDataChange(fn) {
+  vehicleDataListeners.add(fn);
+
+  return () => vehicleDataListeners.delete(fn);
+}
+
+function notifyVehicleDataChange() {
+  vehicleDataListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (error) {
+      console.error(error);
+    }
+  });
+}
+
+export async function refreshVehicles() {
+  data.vehicles = await selectAll(
+    'vehicles',
+    fromVehicle
+  );
+
+  notifyVehicleDataChange();
+}
+
+// Atualização manual da quilometragem.
+
+export async function updateVehicleOdometer(id, value) {
+  const odometer = Number(value);
+
+  if (
+    String(value ?? '').trim() === '' ||
+    !Number.isSafeInteger(odometer) ||
+    odometer < 0
+  ) {
+    throw new Error('Informe uma quilometragem válida.');
+  }
+
+  const vehicle = data.vehicles.find(
+    (v) => String(v.id) === String(id)
+  );
+
+  if (!vehicle) {
+    throw new Error('Veículo não encontrado.');
+  }
+
+  if (odometer < vehicle.currentOdometer) {
+    throw new Error(
+      'A quilometragem não pode ser menor que a atual.'
+    );
+  }
+
+  const { data: row, error } = await supabase
+    .from('vehicles')
+    .update({
+      current_odometer: odometer,
+    })
+    .eq('id', id)
+    .lte('current_odometer', odometer)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const updated = fromVehicle(row);
+
+  data.vehicles = data.vehicles.map(
+    (v) => String(v.id) === String(id)
+      ? updated
+      : v
+  );
+
+  notifyVehicleDataChange();
+
+  return updated;
+}
+
+// Cadastro de veículo.
+
 export async function addVehicle(values) {
   const {
     data: { user },
@@ -116,7 +197,6 @@ export async function addVehicle(values) {
   const nickname = String(values.nickname || '').trim();
 
   const yearText = String(values.year ?? '').trim();
-
   const year = Number(yearText);
 
   const currentOdometer = Number(
@@ -157,7 +237,7 @@ export async function addVehicle(values) {
     currentOdometer < 0
   ) {
     throw new Error(
-      'Informe uma quilometragem atual inteira, maior ou igual a zero.'
+      'Informe uma quilometragem atual válida.'
     );
   }
 
@@ -193,6 +273,8 @@ export async function addVehicle(values) {
   return vehicle;
 }
 
+// Cadastrar abastecimento.
+
 export async function addRefueling(vehicleId, values) {
   const { data: row, error } = await supabase
     .from('refuelings')
@@ -209,11 +291,19 @@ export async function addRefueling(vehicleId, values) {
 
   if (error) throw error;
 
+  const created = fromRefueling(row);
+
   data.refuelings = [
     ...data.refuelings,
-    fromRefueling(row),
+    created,
   ];
+
+  await refreshVehicles().catch(console.error);
+
+  return created;
 }
+
+// Excluir abastecimento.
 
 export async function deleteRefueling(id) {
   const { error } = await supabase
@@ -227,6 +317,8 @@ export async function deleteRefueling(id) {
     (refueling) => refueling.id !== id
   );
 }
+
+// Cadastrar manutenção.
 
 export async function addMaintenanceRecord(
   vehicleId,
@@ -249,11 +341,19 @@ export async function addMaintenanceRecord(
 
   if (error) throw error;
 
+  const created = fromMaintenance(row);
+
   data.maintenanceRecords = [
     ...data.maintenanceRecords,
-    fromMaintenance(row),
+    created,
   ];
+
+  await refreshVehicles().catch(console.error);
+
+  return created;
 }
+
+// Excluir manutenção.
 
 export async function deleteMaintenanceRecord(id) {
   const { error } = await supabase
@@ -269,8 +369,8 @@ export async function deleteMaintenanceRecord(id) {
     );
 }
 
+// Editar abastecimento.
 
-// Editar abastecimento existente.
 export async function updateRefueling(id, values) {
   const { data: row, error } = await supabase
     .from('refuelings')
@@ -296,10 +396,13 @@ export async function updateRefueling(id, values) {
         : refueling
   );
 
+  await refreshVehicles().catch(console.error);
+
   return updated;
 }
 
-// Editar manutenção existente.
+// Editar manutenção.
+
 export async function updateMaintenanceRecord(
   id,
   values
@@ -330,6 +433,8 @@ export async function updateMaintenanceRecord(
           ? updated
           : maintenance
     );
+
+  await refreshVehicles().catch(console.error);
 
   return updated;
 }
