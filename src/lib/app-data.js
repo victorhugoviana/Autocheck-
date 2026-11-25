@@ -268,3 +268,68 @@ export async function deleteMaintenanceRecord(id) {
       (maintenance) => maintenance.id !== id
     );
 }
+
+
+// Editar abastecimento existente.
+export async function updateRefueling(id, values) {
+  const { data: row, error } = await supabase
+    .from('refuelings')
+    .update({
+      date: values.date,
+      odometer: values.odometer,
+      liters: values.liters,
+      total_amount: values.totalAmount,
+      fuel_type: values.fuelType,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const updated = fromRefueling(row);
+
+  data.refuelings = data.refuelings.map(
+    (refueling) =>
+      refueling.id === id
+        ? updated
+        : refueling
+  );
+
+  return updated;
+}
+
+// Editar manutenção existente.
+export async function updateMaintenanceRecord(
+  id,
+  values
+) {
+  const { data: row, error } = await supabase
+    .from('maintenance_records')
+    .update({
+      date: values.date,
+      title: values.title,
+      part_name: values.partName,
+      part_cost: values.partCost,
+      labor_cost: values.laborCost,
+      odometer: values.odometer,
+      category: values.category,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const updated = fromMaintenance(row);
+
+  data.maintenanceRecords =
+    data.maintenanceRecords.map(
+      (maintenance) =>
+        maintenance.id === id
+          ? updated
+          : maintenance
+    );
+
+  return updated;
+}
